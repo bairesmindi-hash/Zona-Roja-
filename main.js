@@ -10,15 +10,17 @@ const TOKEN = "";
 const ROL_CIVILES_ID = ""; 
 
 // --- CARGA DE COMANDOS ---
-try {
-    const commandFiles = fs.readdirSync('./comandos').filter(file => file.endsWith('.js'));
-    for(const file of commandFiles) {
-        const command = require(`./comandos/${file}`);
-        client.commands.set(command.name, command);
-        console.log(`✅ Comando cargado: ${file}`);
-    }
-} catch (e) { console.log("⚠️ Carpeta 'comandos' no encontrada o vacía."); }
-
+if (fs.existsSync('./comandos')) {
+    try {
+        const commandFiles = fs.readdirSync('./comandos').filter(file => file.endsWith('.js'));
+        for(const file of commandFiles) {
+            const command = require(`./comandos/${file}`);
+            client.commands.set(command.name, command);
+            console.log(`✅ Comando cargado: ${file}`);
+        }
+    } catch (e) { console.error("Error al cargar comandos:", e); }
+} else {
+    console.log("⚠️ Carpeta 'comandos' no encontrada. El bot iniciará sin comandos.");
 // --- EVENTO DE INICIO ---
 client.once('ready', () => {
     console.log(`🚀 BOT ENCENDIDO Y CONECTADO: ${client.user.tag}`);
@@ -60,4 +62,4 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login("");
+client.login(process.env.TOKEN);
