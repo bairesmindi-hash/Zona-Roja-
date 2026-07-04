@@ -6,7 +6,6 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const TOKEN = ""; 
 const ROL_CIVILES_ID = ""; 
 
 // --- CARGA DE COMANDOS ---
@@ -20,13 +19,15 @@ if (fs.existsSync('./comandos')) {
         }
     } catch (e) { console.error("Error al cargar comandos:", e); }
 } else {
-    console.log("⚠️ Carpeta 'comandos' no encontrada. El bot iniciará sin comandos.");
+    console.log("⚠️ Carpeta 'comandos' no encontrada. Iniciando sin comandos.");
+}
+
 // --- EVENTO DE INICIO ---
 client.once('ready', () => {
     console.log(`🚀 BOT ENCENDIDO Y CONECTADO: ${client.user.tag}`);
 });
 
-// --- LÓGICA DE COMANDOS (u/...) ---
+// --- LÓGICA DE COMANDOS ---
 client.on('messageCreate', async message => {
     if (!message.content.startsWith("u/") || message.author.bot) return;
     const args = message.content.slice(2).trim().split(/ +/g);
@@ -39,8 +40,12 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         if (interaction.customId === 'btn_verificacion') {
             const role = interaction.guild.roles.cache.get(ROL_CIVILES_ID);
-            try { await interaction.member.roles.add(role); await interaction.reply({ content: "✅ Verificado.", ephemeral: true }); } 
-            catch (e) { await interaction.reply({ content: "Error: No tengo permisos.", ephemeral: true }); }
+            try { 
+                await interaction.member.roles.add(role); 
+                await interaction.reply({ content: "✅ Verificado.", ephemeral: true }); 
+            } catch (e) { 
+                await interaction.reply({ content: "Error: No tengo permisos.", ephemeral: true }); 
+            }
         }
         else if (interaction.customId === 'btn_postulacion') {
             const modal = new ModalBuilder().setCustomId('modal_postulacion').setTitle('Formulario de Postulación');
