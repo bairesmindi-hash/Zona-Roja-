@@ -94,4 +94,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 
-client.login(process.env.TOKEN || "MTUxOTU3MzM5MTY5MzMyMDI5Mg.GsRqZO.HoOc_uDc2VLKBdrKTgb9hCZ8wMt3MnT9SG_XRY");
+client.login(process.env.TOKEN);
