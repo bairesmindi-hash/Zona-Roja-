@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 
 const client = new Client({ 
@@ -6,65 +6,92 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const ROL_CIVILES_ID = ""; 
+const processing = new Set(); 
 
-// --- CARGA DE COMANDOS ---
-if (fs.existsSync('./comandos')) {
-    try {
-        const commandFiles = fs.readdirSync('./comandos').filter(file => file.endsWith('.js'));
-        for(const file of commandFiles) {
+const comandosPath = './comandos';
+if (fs.existsSync(comandosPath)) {
+    const commandFiles = fs.readdirSync(comandosPath).filter(file => file.endsWith('.js'));
+    for(const file of commandFiles) {
+        try {
             const command = require(`./comandos/${file}`);
             client.commands.set(command.name, command);
-            console.log(`✅ Comando cargado: ${file}`);
-        }
-    } catch (e) { console.error("Error al cargar comandos:", e); }
-} else {
-    console.log("⚠️ Carpeta 'comandos' no encontrada. Iniciando sin comandos.");
+        } catch (e) { console.error(e); }
+    }
 }
 
-// --- EVENTO DE INICIO ---
 client.once('ready', () => {
-    console.log(`🚀 BOT ENCENDIDO Y CONECTADO: ${client.user.tag}`);
+    console.log(`🚀 BOT ENCENDIDO: ${client.user.tag}`);
 });
 
-// --- LÓGICA DE COMANDOS ---
 client.on('messageCreate', async message => {
     if (!message.content.startsWith("u/") || message.author.bot) return;
     const args = message.content.slice(2).trim().split(/ +/g);
-    const cmd = client.commands.get(args.shift().toLowerCase());
+    const cmdName = args.shift().toLowerCase();
+    const cmd = client.commands.get(cmdName);
     if (cmd) try { await cmd.execute(client, message, args); } catch (e) { console.error(e); }
 });
 
-// --- LÓGICA DE BOTONES Y FORMULARIOS ---
 client.on('interactionCreate', async interaction => {
-    if (interaction.isButton()) {
-        if (interaction.customId === 'btn_verificacion') {
-            const role = interaction.guild.roles.cache.get(ROL_CIVILES_ID);
-            try { 
-                await interaction.member.roles.add(role); 
-                await interaction.reply({ content: "✅ Verificado.", ephemeral: true }); 
-            } catch (e) { 
-                await interaction.reply({ content: "Error: No tengo permisos.", ephemeral: true }); 
-            }
+    if (!interaction.isButton() && !interaction.isModalSubmit()) return;
+
+    if (processing.has(interaction.user.id)) return;
+    processing.add(interaction.user.id);
+    setTimeout(() => processing.delete(interaction.user.id), 3000);
+
+    try {
+        if (interaction.isButton() && interaction.customId.startsWith('t_')) {
+            const ticketType = interaction.customId.replace('t_', '');
+            const channel = await interaction.guild.channels.create({
+                name: `ticket-${ticketType}-${interaction.user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+                ]
+            });
+            return await interaction.reply({ content: `✅ Ticket de **${ticketType}** creado: ${channel}`, ephemeral: true });
         }
-        else if (interaction.customId === 'btn_postulacion') {
+
+        if (interaction.isButton() && interaction.customId === 'btn_postulacion') {
             const modal = new ModalBuilder().setCustomId('modal_postulacion').setTitle('Formulario de Postulación');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel('Edad').setStyle(TextInputStyle.Short)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel('Nombre y Usuario').setStyle(TextInputStyle.Short)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel('Usuario').setStyle(TextInputStyle.Short)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel('Experiencia').setStyle(TextInputStyle.Paragraph)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel('Tiempo').setStyle(TextInputStyle.Short)),
                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q5').setLabel('Motivo').setStyle(TextInputStyle.Paragraph))
             );
-            await interaction.showModal(modal);
+            return await interaction.showModal(modal);
         }
-    }
-    else if (interaction.isModalSubmit() && interaction.customId === 'modal_postulacion') {
-        const r = [interaction.fields.getTextInputValue('q1'), interaction.fields.getTextInputValue('q2'), interaction.fields.getTextInputValue('q3'), interaction.fields.getTextInputValue('q4'), interaction.fields.getTextInputValue('q5')];
-        const channel = await interaction.guild.channels.create({ name: `postulacion-${interaction.user.username}`, type: ChannelType.GuildText });
-        await interaction.reply({ content: `Postulación enviada: ${channel}`, ephemeral: true });
-        await channel.send(`**Nueva Postulación:**\nEdad: ${r[0]}\nUsuario: ${r[1]}\nExp: ${r[2]}\nTiempo: ${r[3]}\nMotivo: ${r[4]}`);
+
+        if (interaction.isModalSubmit() && interaction.customId === 'modal_postulacion') {
+            await interaction.deferReply({ ephemeral: true });
+
+            const nombreCanal = `postulacion-${interaction.user.username}`;
+            const canalExistente = interaction.guild.channels.cache.find(c => c.name === nombreCanal);
+            
+            if (canalExistente) {
+                return interaction.editReply({ content: `❌ Ya tienes una postulación abierta: ${canalExistente}` });
+            }
+
+            const channel = await interaction.guild.channels.create({ 
+                name: nombreCanal, 
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+                ]
+            });
+            
+            await channel.send(`¡Hola <@${interaction.user.id}>! Hemos recibido tu postulación correctamente. En breve nos pondremos en contacto contigo.\n\n**Datos enviados:**\nEdad: ${interaction.fields.getTextInputValue('q1')}\nUsuario: ${interaction.fields.getTextInputValue('q2')}\nExperiencia: ${interaction.fields.getTextInputValue('q3')}\nTiempo disponible: ${interaction.fields.getTextInputValue('q4')}\nMotivo: ${interaction.fields.getTextInputValue('q5')}`);
+            
+            await interaction.editReply({ content: `✅ Postulación enviada: ${channel}` });
+        }
+    } catch (e) { 
+        console.error("Error:", e); 
+        processing.delete(interaction.user.id);
     }
 });
 
-client.login(process.env.TOKEN);
+
+client.login(process.env.TOKEN || "MTUxOTU3MzM5MTY5MzMyMDI5Mg.GsRqZO.HoOc_uDc2VLKBdrKTgb9hCZ8wMt3MnT9SG_XRY");
