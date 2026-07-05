@@ -39,7 +39,7 @@ client.on('interactionCreate', async interaction => {
     setTimeout(() => processing.delete(interaction.user.id), 3000);
 
     try {
-        // LÓGICA DE TICKETS
+        // --- LÓGICA DE TICKETS ---
         if (interaction.isButton() && interaction.customId.startsWith('t_')) {
             const ticketType = interaction.customId.replace('t_', '');
             const channel = await interaction.guild.channels.create({
@@ -50,12 +50,11 @@ client.on('interactionCreate', async interaction => {
                     { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
                 ]
             });
-            // Mención en Ticket
-            await channel.send(`¡Hola <@${interaction.user.id}>! Tu ticket de **${ticketType}** ha sido creado. Un staff te atenderá pronto.`);
-            return await interaction.reply({ content: `✅ Ticket creado: ${channel}`, ephemeral: true });
+            await channel.send(`¡Hola <@${interaction.user.id}>! Hemos recibido tu ticket de **${ticketType}**. En breve un miembro del staff se pondrá en contacto contigo para ayudarte.`);
+            return await interaction.reply({ content: `✅ Ticket de **${ticketType}** creado: ${channel}`, ephemeral: true });
         }
 
-        // LÓGICA DE POSTULACIONES
+        // --- LÓGICA DE POSTULACIONES ---
         if (interaction.isButton() && interaction.customId === 'btn_postulacion') {
             const modal = new ModalBuilder().setCustomId('modal_postulacion').setTitle('Formulario de Postulación');
             modal.addComponents(
@@ -84,8 +83,7 @@ client.on('interactionCreate', async interaction => {
                 ]
             });
             
-            // Mención en Postulación
-            await channel.send(`¡Hola <@${interaction.user.id}>! Hemos recibido tu postulación correctamente.\n\n**Datos enviados:**\nEdad: ${interaction.fields.getTextInputValue('q1')}\nUsuario: ${interaction.fields.getTextInputValue('q2')}\nExperiencia: ${interaction.fields.getTextInputValue('q3')}\nTiempo disponible: ${interaction.fields.getTextInputValue('q4')}\nMotivo: ${interaction.fields.getTextInputValue('q5')}`);
+            await channel.send(`¡Hola <@${interaction.user.id}>! Hemos recibido tu postulación correctamente. En breve nos pondremos en contacto contigo.\n\n**Datos enviados:**\nEdad: ${interaction.fields.getTextInputValue('q1')}\nUsuario: ${interaction.fields.getTextInputValue('q2')}\nExperiencia: ${interaction.fields.getTextInputValue('q3')}\nTiempo disponible: ${interaction.fields.getTextInputValue('q4')}\nMotivo: ${interaction.fields.getTextInputValue('q5')}`);
             
             await interaction.editReply({ content: `✅ Postulación enviada: ${channel}` });
         }
