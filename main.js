@@ -48,14 +48,53 @@ client.on('interactionCreate', async interaction => {
             await channel.send(`¡Hola <@${interaction.user.id}>! Ticket de **${ticketType}** creado.`);
             return await interaction.reply({ content: `✅ Creado: ${channel}`, ephemeral: true });
         }
-        // Lógica de postulación simplificada para evitar errores
+        
+        // Lógica de apertura del formulario de postulación
         if (interaction.isButton() && interaction.customId === 'btn_postulacion') {
-            const modal = new ModalBuilder().setCustomId('modal_postulacion').setTitle('Postulación');
+            const modal = new ModalBuilder().setCustomId('modal_postulacion').setTitle('Formulario de Postulación');
             modal.addComponents(
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel('Edad').setStyle(TextInputStyle.Short)),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel('Usuario').setStyle(TextInputStyle.Short))
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q1').setLabel('Nombre (OOC / IC)').setStyle(TextInputStyle.Short)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q2').setLabel('Edad').setStyle(TextInputStyle.Short)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q3').setLabel('Disponibilidad horaria').setStyle(TextInputStyle.Short)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q4').setLabel('¿Por qué querés ser Staff?').setStyle(TextInputStyle.Paragraph)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('q5').setLabel('¿Qué conocimientos aportás?').setStyle(TextInputStyle.Paragraph))
             );
             return await interaction.showModal(modal);
+        }
+
+        // Lógica de recepción del formulario
+        if (interaction.isModalSubmit() && interaction.customId === 'modal_postulacion') {
+            const nombre = interaction.fields.getTextInputValue('q1');
+            const edad = interaction.fields.getTextInputValue('q2');
+            const disp = interaction.fields.getTextInputValue('q3');
+            const razon = interaction.fields.getTextInputValue('q4');
+            const cono = interaction.fields.getTextInputValue('q5');
+
+            const channel = await interaction.guild.channels.create({
+                name: `postu-${interaction.user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+                ]
+            });
+
+            const embed = new EmbedBuilder()
+                .setTitle('Nueva Postulación')
+                .setColor(0xFF0000)
+                .addFields(
+                    { name: '👤 Nombre (OOC / IC)', value: nombre },
+                    { name: '🎂 Edad', value: edad },
+                    { name: '⏰ Disponibilidad', value: disp },
+                    { name: '❓ ¿Por qué querés ser Staff?', value: razon },
+                    { name: '💡 Conocimientos', value: cono }
+                );
+
+            await channel.send({ 
+                content: `Hola ${interaction.user.toString()}, hemos recibido tu postulación. El staff la revisará en breve.`, 
+                embeds: [embed] 
+            });
+            return await interaction.reply({ content: `✅ Postulación enviada al canal: ${channel}`, ephemeral: true });
         }
     } catch (e) { console.error(e); processing.delete(interaction.user.id); }
 });
