@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField, EmbedBuilder, Events } = require('discord.js');
 const fs = require('fs');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
@@ -58,6 +58,25 @@ client.on('interactionCreate', async interaction => {
             return await interaction.showModal(modal);
         }
     } catch (e) { console.error(e); processing.delete(interaction.user.id); }
+});
+
+// Evento de bienvenida para Zona Roja RP
+client.on(Events.GuildMemberAdd, (member) => {
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor(0xFF0000) // Rojo
+        .setTitle('¡Bienvenido a Zona Roja RP!')
+        .setDescription(`¡Hola ${member.user.toString()}, estamos emocionados de tenerte acá! 💬`)
+        .setThumbnail(member.user.displayAvatarURL())
+        .addFields(
+            { name: '👤 Usuario', value: member.user.username, inline: true },
+            { name: '🆔 ID', value: member.id, inline: true },
+            { name: '📅 Cuenta creada', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
+        )
+        .setFooter({ text: `¡Ahora somos ${member.guild.memberCount} miembros!` })
+        .setTimestamp();
+
+    const channel = member.guild.channels.cache.get('1520645046456680650');
+    if (channel) channel.send({ embeds: [welcomeEmbed] });
 });
 
 client.login(process.env.TOKEN);
